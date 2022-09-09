@@ -153,7 +153,7 @@ module.exports = {
    plugins:[
        new HtmlWebpackPlugin({
             template: path.join(__dirname,'/src/index.html')
-       }) 
+       })
    ]
 }
 ```
@@ -181,11 +181,16 @@ module.exports = {
 
 目前的项目结构如下图所示：
 
-
-
-![image.png](https://ucc.alicdn.com/pic/developer-ecology/5c4a7a7b0e374278ac85d4a0576179ef.png)
-
-
+```
+├── node_modules
+└── src
+    ├── index.html
+    ├── index.js
+├── .babelrc
+├── package-lock.json
+├── package.json
+├── webpack.config.js
+```
 
 js和html文件如下所示：
 
@@ -226,6 +231,123 @@ html:
 </html>
 ```
 
-
-
 最后，只要start一下，项目就会启动在8080端口。
+```shell
+npm run start
+```
+
+#### TypeScript配置
+
+```shell
+npm install -D typescript ts-loader @types/node @types/react @types/react-dom
+```
+
+- typescript: TypeScript的主要引擎
+- ts-loader: 转义.ts --> .js 并打包
+- @types/node @types/react @types/react-dom: 对node、react、react dom类型的定义
+
+同时在根目录加入tsconfig.json来对ts编译进行配置：
+
+```
+//_tsconfig.json_
+
+{
+  "compilerOptions": {
+    "outDir": "./dist/",
+    "noImplicitAny": true,
+    "module": "es6",
+    "target": "es5",
+    "jsx": "react",
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "Node"
+  }
+}
+```
+
+最后在webpack中添加对ts的支持。
+
+##### 添加ts-loader：
+
+```
+//_webpack.config.js_
+rules: [
+    ...
+    {
+      test: /\.tsx?$/,
+      exclude: /node_modules/,
+      loader: 'ts-loader'
+    }
+    ...
+}
+```
+
+##### 设置resolve属性，来指定文件如何被解析：
+
+```
+//_webpack.config.js_
+...
+resolve: 
+{
+   extensions: [ '.tsx', '.ts', '.js' ],
+}
+...
+```
+
+##### rename入口：
+
+```
+//_webpack.config.js_
+...
+entry: "./src/index.tsx",
+...
+```
+
+最后启动一下server来看一下ts配置是否正确。
+
+
+
+![image.png](https://ucc.alicdn.com/pic/developer-ecology/fa92b4a3c58b496ea997a478bd70d5c4.png)
+
+
+
+上述我们的配置其实相当于执行了一次：
+
+```
+npx create-react-app my-app --template typescript
+```
+
+在这种流程下很是麻烦，将 *.ts 提供给 TypeScript，然后将运行的结果提供给 Babel，而且还要借助很多loader。
+
+
+
+![image.png](https://ucc.alicdn.com/pic/developer-ecology/7a35e03be53b47a39655c9c7a14f7080.png)
+
+
+
+那么我们能不能简化一下这样的流程，因为Babel7中提供的babel-loader就可以完美进行编译ts，答案是可以的，这种方式直接简化了过程。
+
+
+
+![image.png](https://ucc.alicdn.com/pic/developer-ecology/ea9a78d0227a4344b22c34e9e7f7d5b8.png)
+
+
+
+```
+module: {
+    rules: [
+      {
+        test: /\.tsx?$/,
+        exclude: /node_modules/,
+        loader: ['babel-loader']
+      }
+    ]
+  },
+```
+
+并且在.babelrc中也只多了一行@babel/preset-typescript，这种配置更简单，而且打包速度更快一点，逻辑更加清晰。
+
+那么为什么还要在项目中使用ts-loader呢？
+
+- ts-loader 在内部是调用了 TypeScript 的官方编译器 -- tsc。所以，ts-loader 和 tsc 是共享 tsconfig.json，所以会提供完整的报错信息，ts-loader也与 vscode 提供的语法校验表现一致
+- 而@babel/preset-typescript有的时候会无法提供完整的报错信息和类型提示
